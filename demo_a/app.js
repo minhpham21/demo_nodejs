@@ -1,6 +1,17 @@
 const express = require('express')
+// const bodyParser = require('body-parser')
 const app = express()
-const port = 3033
+const port = 3000
+
+// app.use(bodyParser.json())
+// app.use(bodyParser.urlencoded({ extended: false }))
+
+var user = {
+    name : 'minhpham',
+    pass : 12345678
+}
+
+var ACCESS_TOKEN = 'token_'
 
 var data = [
     {
@@ -30,13 +41,41 @@ app.get('/', (req, res) => {
     res.json(data);
 })
 
-app.post('/api/create', function (req, res) {
+
+app.post('/login', (req, res, next) => {
+
     req.on('data', chunk => {
+        let request = JSON.parse(chunk);
+        // console.log(request);
+        let userName = request.name;
+        let pass = request.pass;
+        if (userName == user.name && pass == user.pass) {
+            res.status(200).json({
+                success: true,
+                _token: ACCESS_TOKEN
+            })
+        } else {
+            res.status(401).json({
+                success: false,
+            })
+        }
+    })
+});
+function checkToken (req, res, next) {
+    let accessTokenFromHeader =  req.headers.authorization;
+    if (!accessTokenFromHeader) res.status(401).json("not access token")
+    if (accessTokenFromHeader != ACCESS_TOKEN)  res.status(401).json("Unauthorised")
+    next();
+
+}
+app.post('/api/create', checkToken, (req, res) => {
+    req.on('data', chunk => {
+        // console.log(accessTokenFromHeader);
         let student = JSON.parse(chunk);
         student['id'] = data[data.length - 1].id + 1;
         data.push(student);
+        // console.log(data);
     });
-
     req.on('end', () => {
         res.status(200).json({
             success: true,
@@ -46,7 +85,8 @@ app.post('/api/create', function (req, res) {
     });
 })
 
-app.delete('/api/delete/:studentId', (req, res) => {
+
+app.delete('/api/delete/:studentId', checkToken, (req, res) => {
     let studentId = req.params.studentId;
     let result = data.filter( student => student.id != studentId);
 
@@ -58,7 +98,7 @@ app.delete('/api/delete/:studentId', (req, res) => {
     });
 })
 
-app.put('/api/update/:studentId', (req,res) => {
+app.put('/api/update/:studentId', checkToken, (req,res) => {
     let studentId = req.params.studentId;
     
     console.log('studentId', studentId);
